@@ -28,6 +28,8 @@ import sys
 target = sys.argv[1]
 outputs = {}
 bazel_args = []
+gn_output_dir = os.getcwd()
+workspace_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 for arg in sys.argv[2:]:
     if arg.startswith("--"):
         bazel_args.append(arg)
@@ -44,14 +46,17 @@ for arg in sys.argv[2:]:
             # $GN_OUTPUT/libstuff.a
             outputs[arg] = os.path.basename(arg)
 
-print("Invoking bazelisk from ", os.getcwd())
+print("Invoking bazelisk from ", workspace_dir)
 # Forward the remaining args to the bazel invocation
-subprocess.run(["bazelisk", "build", target ] + bazel_args, check=True)
+subprocess.run(
+    ["bazelisk", "build", target] + bazel_args, check=True, cwd=workspace_dir
+)
 
 for bazel_file, output_path in outputs.items():
+    bazel_file = os.path.join(gn_output_dir, bazel_file)
     # GN expects files to be created underneath the output directory from which
     # this script is invoked.
-    expected_output = os.path.join(os.getcwd(), output_path)
+    expected_output = os.path.join(gn_output_dir, output_path)
     if not os.path.exists(expected_output):
         shutil.copyfile(bazel_file, expected_output)
         os.chmod(expected_output, 0o755)
